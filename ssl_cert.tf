@@ -9,36 +9,23 @@ data "aws_route53_zone" "public" {
 resource "aws_acm_certificate" "myapp" {
   domain_name       = aws_route53_record.myapp.fqdn
   validation_method = "DNS"
-}
-
-# This is a DNS record for the ACM certificate validation to prove we own the domain
-# This works, but requires a targeted apply :(  not really good enough.
-#
-# This is also pretty odd.  What it's doing, is foreach is creating an a set of objects {} and assinging these
-# to each.value.  The inner for loop is looping over each domain_validation_options and for each one, creating a
-# map of name, record and type..
-#
-locals {
-  domain_cert_options = tolist(aws_acm_certificate.myapp.domain_validation_options)[0]
-  domain_validation_options = {
-    myapp = {
-      name   = local.domain_cert_options.resource_record_name
-      record = local.domain_cert_options.resource_record_value
-      type   = local.domain_cert_options.resource_record_type
-    }
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
-output "domain_validation_options" {
-  value = local.domain_validation_options
-}
+# This is a DNS record for the ACM certificate validation to prove we own the domain
+#
+# This example, we make an assumption that the certificate is for a single domain name so can just use the first value of the
+# domain_validation_options.  It allows the terraform to apply without having to be targeted.
+# This is somewhat less complex than the example at https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/acm_certificate_validation
+# - that above example, won't apply without targeting
 
 resource "aws_route53_record" "cert_validation" {
-  for_each = local.domain_validation_options
   allow_overwrite = true
-  name            = each.value.name
-  records         = [each.value.record]
-  type            = each.value.type
+  name            = tolist(aws_acm_certificate.myapp.domain_validation_options)[0].resource_record_name
+  records         = [ tolist(aws_acm_certificate.myapp.domain_validation_options)[0].resource_record_value ]
+  type            = tolist(aws_acm_certificate.myapp.domain_validation_options)[0].resource_record_type
   zone_id  = data.aws_route53_zone.public.id
   ttl      = 60
   provider = aws.account_route53
@@ -47,7 +34,7 @@ resource "aws_route53_record" "cert_validation" {
 # This tells terraform to cause the route53 validation to happen
 resource "aws_acm_certificate_validation" "cert" {
   certificate_arn         = aws_acm_certificate.myapp.arn
-  validation_record_fqdns = [ for record in aws_route53_record.cert_validation : record.fqdn ]
+  validation_record_fqdns = [ aws_route53_record.cert_validation.fqdn ]
 }
 
 # Standard route53 DNS record for "myapp" pointing to an ALB
@@ -65,4 +52,7 @@ resource "aws_route53_record" "myapp" {
 
 output "testing" {
   value = "Test this demo code by going to https://${aws_route53_record.myapp.fqdn} and checking your have a valid SSL cert"
+}
+output "testing_sclient" {
+  value = "Test this SSL by using openssl s_client -host ${aws_route53_record.myapp.fqdn} -port 443 and looking at the certs"
 }
