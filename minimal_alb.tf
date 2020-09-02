@@ -7,7 +7,7 @@ resource "aws_alb" "mylb" {
 # Basic https lisener to demo HTTPS certiciate
 resource "aws_alb_listener" "mylb_https" {
   load_balancer_arn = aws_alb.mylb.arn
-  certificate_arn   = aws_acm_certificate.myapp.arn
+  certificate_arn   = aws_acm_certificate_validation.cert.certificate_arn
   port              = "443"
   protocol          = "HTTPS"
   # Default action, and other paramters removed for BLOG
