@@ -1,6 +1,5 @@
 variable "demo_dns_zone" {
   description = "Specific to your setup, pick a domain you have in route53"
-  default     = "lab.oss.nz."
 }
 
 

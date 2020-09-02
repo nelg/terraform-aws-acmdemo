@@ -11,4 +11,5 @@ terraform apply
 # Requirements:
 
  - existing route53 zone in AWS
- - terraform v0.12.16 or newer
+ - terraform v0.13.1 or newer
+ - AWS provider 3.4.x
