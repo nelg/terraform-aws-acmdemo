@@ -18,14 +18,23 @@ resource "aws_acm_certificate" "myapp" {
 # to each.value.  The inner for loop is looping over each domain_validation_options and for each one, creating a
 # map of name, record and type..
 #
-resource "aws_route53_record" "cert_validation" {
-  for_each = {
-    for dvo in aws_acm_certificate.myapp.domain_validation_options : dvo.domain_name => {
-      name   = dvo.resource_record_name
-      record = dvo.resource_record_value
-      type   = dvo.resource_record_type
+locals {
+  domain_cert_options = tolist(aws_acm_certificate.myapp.domain_validation_options)[0]
+  domain_validation_options = {
+    myapp = {
+      name   = local.domain_cert_options.resource_record_name
+      record = local.domain_cert_options.resource_record_value
+      type   = local.domain_cert_options.resource_record_type
     }
   }
+}
+
+output "domain_validation_options" {
+  value = local.domain_validation_options
+}
+
+resource "aws_route53_record" "cert_validation" {
+  for_each = local.domain_validation_options
   allow_overwrite = true
   name            = each.value.name
   records         = [each.value.record]
